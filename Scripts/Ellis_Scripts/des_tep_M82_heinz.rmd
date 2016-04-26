@@ -71,8 +71,8 @@ tep_snp_data <- subset(tep_data, tep.gt != "0/0")
 tep_snp_data <- tep_snp_data[grepl("1/1",tep_snp_data$M82.gt),]
 tep_snp_data <- tep_snp_data[grepl("0/0",tep_snp_data$Heinz.gt),]
 
-tep_snp_data <- tep_snp_data[grep("TYPE=snp", tep_snp_data_1$INFO),]
-tep_snp_data <- tep_snp_data[!is.na(tep_snp_data_1$tep.read.depth),]
+tep_snp_data <- tep_snp_data[grep("TYPE=snp", tep_snp_data$INFO),]
+tep_snp_data <- tep_snp_data[!is.na(tep_snp_data$tep.read.depth),]
 
 #Filter for quality and depth
 
