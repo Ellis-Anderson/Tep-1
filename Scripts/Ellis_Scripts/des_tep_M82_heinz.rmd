@@ -1,0 +1,109 @@
+---
+title: "des_tep_M82_heinz"
+author: "Ellis Anderson"
+date: "April 21, 2016"
+output: pdf_document
+---
+
+The set of plots with the running mean plotted in seagreen3 are plots based on data from only _tep-1_ SNPs from `tep_M82_heinz_2.vcf`. The mapping parameters are highlighted in Leslie Herrera's md file called `tep_project` with further information on heinz mapping, merging and calling in the `tep_heinz-heinz` md file.
+
+This script is based off of Leslie's des9_tep_2_snp.rmd with edits for including Heinz calls and filtering M82 reads. 
+
+**Note** This vcf _does_ have the M82 and Heinz calls merged with it and the M82 and Heinz SNPs are **not** used in analysis. (deletions and SNPs were anaylzed in separate scripts)
+
+
+
+The R commands are as follows:
+
+```
+#Set up
+library(plyr)
+library(ggplot2)
+library(caTools)
+
+setwd("~/Desktop/Honors Thesis Important Stuff/vcf and BSA plots/")
+
+tep_data<-read.table("tep_M82_2.vcf", header = FALSE, stringsAsFactors=FALSE)
+summary(tep_data)
+head(tep_data)
+colnames(tep_data) <- c("CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT","tep_calls","M82_calls","Heinz_calls")
+
+#get rid of alleles with more than one alternate allele
+tep_data <- tep_data[!grepl(",",tep_data$ALT),]
+
+#fix empty data entry
+tep_data$tep_calls[tep_data$tep_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
+tep_data$M82_calls[tep_data$M82_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
+tep_data$Heinz_calls[tep_data$Heinz_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
+
+
+tep_tmp <- ldply(strsplit(tep_data$tep_calls, split = ":"))
+colnames(tep_tmp) <- c("tep.gt","tep.read.depth","tep.ref.depth","tep.ref.qual","tep.alt.depth","tep.alt.qual","tep.lik")
+head(tep_tmp)
+
+M82_tmp <- ldply(strsplit(tep_data$M82_calls, split = ":"))
+colnames(M82_tmp) <- c("M82.gt","M82.read.depth","M82.ref.depth","M82.ref.qual","M82.alt.depth","M82.alt.qual","M82.lik")
+head(M82_tmp)
+
+Heinz_tmp <- ldply(strsplit(tep_data$M82_calls, split = ":"))
+colnames(Heinz_tmp) <- c("Heinz.gt","Heinz.read.depth","Heinz.ref.depth","Heinz.ref.qual","Heinz.alt.depth","Heinz.alt.qual","Heinz.lik")
+head(Heinz_tmp)
+
+#convert values to numeric
+
+tep_tmp[,c(-1,-7)] <- apply(tep_tmp[,c(-1,-7)],2,as.numeric)
+M82_tmp[,c(-1,-7)] <- apply(M82_tmp[,c(-1,-7)],2,as.numeric)
+Heinz_tmp[,c(-1,-7)] <- apply(Heinz_tmp[,c(-1,-7)],2,as.numeric)
+
+summary(tep_tmp)
+summary(M82_tmp)
+summary(Heinz_tmp)
+
+tep_data<- cbind(tep_data, tep_tmp, M82_tmp, Heinz_tmp)
+
+names(tep_data)
+
+#Next steps
+#Filter to keep rows where M82 = "1/1"
+#Filter to keep rows where heinz ="0/0"
+
+tep_snp_data <- subset(tep_data, tep.gt != "0/0")
+tep_snp_data <- tep_snp_data[grepl("1/1",tep_snp_data$M82.gt),]
+tep_snp_data <- tep_snp_data[grepl("0/0",tep_snp_data$Heinz.gt),]
+
+tep_snp_data <- tep_snp_data[grep("TYPE=snp", tep_snp_data_1$INFO),]
+tep_snp_data <- tep_snp_data[!is.na(tep_snp_data_1$tep.read.depth),]
+
+#Filter for quality and depth
+
+small_data <- tep_snp_data[sample(nrow(tep_snp_data),10000),]
+hist(small_data$tep.read.depth[small_data$tep.read.depth < 100],breaks=50)
+hist(small_data$tep.alt.qual[small_data$tep.alt.qual < 400],breaks=40)
+
+
+tep_snp_data <- tep_snp_data[tep_snp_data$tep.read.depth < 60,]
+tep_snp_data <- tep_snp_data[tep_snp_data$tep.read.depth > 5,]
+tep_snp_data <- tep_snp_data[tep_snp_data$tep.alt.qual > 100 | tep_snp_data$tep.ref.qual > 100,]
+
+#Check to make sure filtering worked:
+
+hist(tep_snp_data$tep.read.depth)
+hist(tep_snp_data$tep.alt.qual,breaks=40)
+
+# Calculate for tep %M82
+
+tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.depth / tep_snp_data$tep.read.depth)*100
+tep_snp_data$tep.runmean.15 <- unlist(tapply(tep_snp_data$tep_percent,tep_snp_data$CHROM,runmean,k=15,endrule="constant"))
+tep_snp_data$tep.runmean.20 <- unlist(tapply(tep_snp_data$tep_percent,tep_snp_data$CHROM,runmean,k=20,endrule="constant"))
+
+#plot each chromosome and save to a pdf
+
+pdf("tep_only_M82_snp_2_rm20.pdf",width=12,height=8)
+for(chrom in unique(tep_snp_data$CHROM)) {
+  pl <- ggplot(tep_snp_data[tep_snp_data$CHROM==chrom,],aes(x=POS))
+  pl <- pl + geom_point(alpha=0.5,aes(y=tep_percent))
+  pl <- pl + geom_line(color="seagreen3",lwd=1,aes(y=tep.runmean.20))
+  print(pl + ggtitle(chrom))
+}
+dev.off()
+```
