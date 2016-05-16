@@ -15,45 +15,62 @@ This script is based off of Leslie's des9_tep_2_snp.rmd with edits for including
 
 The R commands are as follows:
 
-```
+---
+title: "des_tep_M82_heinz"
+author: "Ellis Anderson"
+date: "April 21, 2016"
+output: pdf_document
+---
+
+The set of plots with the running mean plotted in seagreen3 are plots based on data from only _tep-1_ SNPs from `tep_M82_heinz_2.vcf`. The mapping parameters are highlighted in Leslie Herrera's md file called `tep_project` with further information on heinz mapping, merging and calling in the `tep_heinz-heinz` md file.
+
+This script is based off of Leslie's des9_tep_2_snp.rmd with edits for including Heinz calls and filtering M82 reads. 
+
+**Note** This vcf _does_ have the M82 and Heinz calls merged with it and the M82 and Heinz SNPs are **not** used in analysis. (deletions and SNPs were anaylzed in separate scripts)
+
+
+
+The R commands are as follows:
+
+```{r}
 #Set up
 library(plyr)
 library(ggplot2)
 library(caTools)
 
-setwd("~/Desktop/Honors Thesis Important Stuff/vcf and BSA plots/")
+setwd("/vol1/")
 
-tep_data<-read.table("tep_M82_2.vcf", header = FALSE, stringsAsFactors=FALSE)
+tep_data<-read.table("heinz_tep_M.vcf", header = FALSE, stringsAsFactors=FALSE)
 summary(tep_data)
 head(tep_data)
-colnames(tep_data) <- c("CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT","tep_calls","M82_calls","Heinz_calls")
+colnames(tep_data) <- c("CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT","tep_calls","M82_calls","heinz_calls")
 
 #get rid of alleles with more than one alternate allele
 tep_data <- tep_data[!grepl(",",tep_data$ALT),]
 
 #fix empty data entry
-tep_data$tep_calls[tep_data$tep_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
-tep_data$M82_calls[tep_data$M82_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
-tep_data$Heinz_calls[tep_data$Heinz_calls=="."] <- "NA:NA:NA:NA:NA:NA:NA,NA,NA"
+tep_data$tep_calls[tep_data$tep_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
+tep_data$M82_calls[tep_data$M82_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
+tep_data$heinz_calls[tep_data$heinz_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
 
 
 tep_tmp <- ldply(strsplit(tep_data$tep_calls, split = ":"))
-colnames(tep_tmp) <- c("tep.gt","tep.read.depth","tep.ref.depth","tep.ref.qual","tep.alt.depth","tep.alt.qual","tep.lik")
+colnames(tep_tmp) <- c("tep.gt","tep.read.depth","tep.allele.count","tep.ref.count","tep.ref.qual","tep.alt.count","tep.alt.qual","tep.gt.likeli")
 head(tep_tmp)
 
 M82_tmp <- ldply(strsplit(tep_data$M82_calls, split = ":"))
-colnames(M82_tmp) <- c("M82.gt","M82.read.depth","M82.ref.depth","M82.ref.qual","M82.alt.depth","M82.alt.qual","M82.lik")
+colnames(M82_tmp) <- c("M82.gt","M82.read.depth","M82.allele.count","M82.ref.depth","M82.ref.qual","M82.alt.depth","M82.alt.qual","M82.lik")
 head(M82_tmp)
 
-Heinz_tmp <- ldply(strsplit(tep_data$M82_calls, split = ":"))
-colnames(Heinz_tmp) <- c("Heinz.gt","Heinz.read.depth","Heinz.ref.depth","Heinz.ref.qual","Heinz.alt.depth","Heinz.alt.qual","Heinz.lik")
+Heinz_tmp <- ldply(strsplit(tep_data$heinz_calls, split = ":"))
+colnames(Heinz_tmp) <- c("Heinz.gt","Heinz.read.depth","Heinz.allele.count","Heinz.ref.depth","Heinz.ref.qual","Heinz.alt.depth","Heinz.alt.qual","Heinz.lik")
 head(Heinz_tmp)
 
 #convert values to numeric
 
-tep_tmp[,c(-1,-7)] <- apply(tep_tmp[,c(-1,-7)],2,as.numeric)
-M82_tmp[,c(-1,-7)] <- apply(M82_tmp[,c(-1,-7)],2,as.numeric)
-Heinz_tmp[,c(-1,-7)] <- apply(Heinz_tmp[,c(-1,-7)],2,as.numeric)
+tep_tmp[,c(-1,-8)] <- apply(tep_tmp[,c(-1,-8)],2,as.numeric)
+M82_tmp[,c(-1,-8)] <- apply(M82_tmp[,c(-1,-8)],2,as.numeric)
+Heinz_tmp[,c(-1,-8)] <- apply(Heinz_tmp[,c(-1,-8)],2,as.numeric)
 
 summary(tep_tmp)
 summary(M82_tmp)
@@ -92,17 +109,17 @@ hist(tep_snp_data$tep.alt.qual,breaks=40)
 
 # Calculate for tep %M82
 
-tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.depth / tep_snp_data$tep.read.depth)*100
-tep_snp_data$tep.runmean.15 <- unlist(tapply(tep_snp_data$tep_percent,tep_snp_data$CHROM,runmean,k=15,endrule="constant"))
-tep_snp_data$tep.runmean.20 <- unlist(tapply(tep_snp_data$tep_percent,tep_snp_data$CHROM,runmean,k=20,endrule="constant"))
+tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.count / tep_snp_data$tep.read.depth)*100
+tep_snp_data$tep.runmean.15 <- unlist(tapply(tep_snp_data$tep.percent,tep_snp_data$CHROM,runmean,k=15,endrule="constant"))
+tep_snp_data$tep.runmean.20 <- unlist(tapply(tep_snp_data$tep.percent,tep_snp_data$CHROM,runmean,k=20,endrule="constant"))
 
 #plot each chromosome and save to a pdf
 
-pdf("tep_only_M82_snp_2_rm20.pdf",width=12,height=8)
+pdf("tep_heinz_M82_2_rm15.pdf",width=12,height=8)
 for(chrom in unique(tep_snp_data$CHROM)) {
   pl <- ggplot(tep_snp_data[tep_snp_data$CHROM==chrom,],aes(x=POS))
-  pl <- pl + geom_point(alpha=0.5,aes(y=tep_percent))
-  pl <- pl + geom_line(color="seagreen3",lwd=1,aes(y=tep.runmean.20))
+  pl <- pl + geom_point(alpha=0.5,aes(y=tep.percent))
+  pl <- pl + geom_line(color="seagreen3",lwd=1,aes(y=tep.runmean.15))
   print(pl + ggtitle(chrom))
 }
 dev.off()
