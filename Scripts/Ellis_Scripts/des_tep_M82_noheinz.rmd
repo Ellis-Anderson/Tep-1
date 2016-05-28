@@ -1,7 +1,7 @@
 ---
-title: "des_tep_M82_heinz"
+title: "des_tep_M82_noheinz"
 author: "Ellis Anderson"
-date: "April 21, 2016"
+date: "May 27, 2016"
 output: pdf_document
 ---
 
@@ -9,7 +9,7 @@ The set of plots with the running mean plotted in seagreen3 are plots based on d
 
 This script is based off of Leslie's des9_tep_2_snp.rmd with edits for including Heinz calls and filtering M82 reads.
 
-**Note** This vcf _does_ have the M82 and Heinz calls merged with it and the M82 and Heinz SNPs are **not** used in analysis. (deletions and SNPs were anaylzed in separate scripts)
+**Note** This vcf _does_ have the M82 and Heinz calls merged with it and the M82 and Heinz SNPs are **not** used in analysis. (deletions and SNPs were anaylzed in separate scripts) Furthermore, unlike the `des_tep_M82_heinz` analysis, this analysis __does not__ use Heinz snps for filtering.
 
 
 The R commands are as follows:
@@ -68,7 +68,6 @@ names(tep_data)
 
 tep_snp_data <- subset(tep_data, tep.gt != "0/0")
 tep_snp_data <- tep_snp_data[grepl("1/1",tep_snp_data$M82.gt),]
-tep_snp_data <- tep_snp_data[grepl("0/0",tep_snp_data$Heinz.gt),]
 
 tep_snp_data <- tep_snp_data[grep("TYPE=snp", tep_snp_data$INFO),]
 tep_snp_data <- tep_snp_data[!is.na(tep_snp_data$tep.read.depth),]
