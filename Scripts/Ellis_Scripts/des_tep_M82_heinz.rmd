@@ -105,4 +105,9 @@ for(chrom in unique(tep_snp_data$CHROM)) {
   print(pl + ggtitle(chrom))
 }
 dev.off()
+
+#determine genomic region where runmean.15 = 100
+area.int <- subset(tep_snp_data, tep.runmean.15 == 100)
+max(area.int$POS)
+min(area.int$POS)
 ```

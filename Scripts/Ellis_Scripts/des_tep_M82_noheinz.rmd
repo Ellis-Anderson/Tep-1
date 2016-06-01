@@ -96,7 +96,7 @@ tep_snp_data$tep.runmean.20 <- unlist(tapply(tep_snp_data$tep.percent,tep_snp_da
 
 #plot each chromosome and save to a pdf
 
-pdf("tep_heinz_M82_2_rm15.pdf",width=12,height=8)
+pdf("tep_heinz_M82_2_noheinz_rm15.pdf",width=12,height=8)
 for(chrom in unique(tep_snp_data$CHROM)) {
   pl <- ggplot(tep_snp_data[tep_snp_data$CHROM==chrom,],aes(x=POS))
   pl <- pl + geom_point(alpha=0.5,aes(y=tep.percent))
