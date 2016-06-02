@@ -122,7 +122,91 @@ incremental: true
 - Map Heinz genome to Heinz genome and add those results to the analysis
 - Look for deletions from fast neutron mutagenesis in region of interest
 
+Recreating Leslie's Results
+=========================================================
+Run through Leslie's code step by step
+
+Results:
+![Results 1](./images/photo15)
 
 
+Proofreading R Script
+=========================================================
+Filtering based on genotype
+```{r, eval=FALSE}
+# Filter to keep rows where M82 = "1/1"
+tep_snp_data <-subset(tep_data, tep.gt != "0/0")
+
+tep_snp_data<-tep_snp_data[grep("TYPE=snp", tep_snp_data$INFO),]
+
+tep_snp_data <- tep_snp_data[!is.na(tep_snp_data$tep.read.depth),]
+```
+
+Proofreading R Script
+=========================================================
+Filtering based on genotype
+```{r eval=FALSE}
+# Filter to keep rows where M82 = "1/1"
+tep_snp_data <-subset(tep_data, tep.gt != "0/0")
+
+tep_snp_data <- tep_snp_data[grepl("1/1",tep_snp_data$M82.gt),]
+
+tep_snp_data<-tep_snp_data[grep("TYPE=snp", tep_snp_data$INFO),]
+
+tep_snp_data <- tep_snp_data[!is.na(tep_snp_data$tep.read.depth),]
+```
+
+New Results
+=========================================================
+![Results 2](./images/photo16)
+
+Mapping Heinz to Heinz
+=========================================================
+- Used heinz reads from Lavelle tie1 experiment: `SRR404081.fastq.gz`
+- Mapped these to `S_lycopersicum_chromosomes.2.50.fa`
+- Reads were mapped using `bwa mem`
+
+Merging Heinz file to Leslie's
+=========================================================
+- Used `picard-tools` functions to add read groups and combine all reads
+- Used `freebayes` to produce a VCF file for analysis in R
+
+R analysis
+==========================================================
+type: sub-section
+Added additional filtering criteria to remove any Heinz-Heinz polymorphisms
+
+```{r, eval=FALSE}
+tep_snp_data <- tep_snp_data[grepl("0/0",tep_snp_data$Heinz.gt),]
+```  
+
+Final Results:
+==========================================================
+Chromosome 9:
+![Ch 09 - Final](./images/photo18)
+
+Final Results:
+==========================================================
+All Chromosomes:
+![All Chromosomes - Final](./images/photo17)
+
+Next Steps
+==========================================================
+- Area of about 300kb identified as 100% M82
+- Fast neutron mutagenesis often leads to large deletions
+- Map reads again, but this time look for large deletions in the area of interest
+
+Further Work
+==========================================================
+Use molecular biology techniques to ensure identified gene results in tep-1 phenotype
+
+Special Thanks
+==========================================================
+type: sub-section
+- Julin Maloof
+- Cody Markelz
+- Leslie Herrera & Amanda Schrager Lavelle
+- Zamir Lab
+- Maloof and Harmer Lab members
 
 
