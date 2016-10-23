@@ -15,7 +15,7 @@ Heinz reads were subsequently mapped to the reference genome using
 
 `samtools sort -m 8000000000 HeinzG_tep1_rmdup_unsorted.bam HeinzG_tep1_rmdup.bam`
 
-These reads were merged with Leslie's `tep_M82_merge_1.bam` and `tep_M82_merge_2.bam` files with the following commands
+These reads were merged with Leslie's `tep_M82_merge_2.bam` files with the following commands
 
 	picard-tools AddOrReplaceReadGroups VALIDATION_STRINGENCY=LENIENT TMP_DIR=./ INPUT=HeinzG_tep1_rmdup.bam OUTPUT=HeinzG_tep1_rmdup_rg.bam RGSM=heinz RGLB=NA RGPL=Illumina RGPU=NA RGID=3
 
@@ -45,41 +45,62 @@ After SNP calling mean depth of tep SNPs was 12.71 and after filtering the mean 
 
 # What genomic area are we looking at?
 
-	#determine genomic region where runmean.15 = 100
+#### determine genomic region where runmean.15 = 100
 	area.int <- subset(tep_snp_data, tep.runmean.15 == 100)
 	min(area.int$POS)
 	max(area.int$POS)
 
 returns values of 67664897 and 67942531 respectively
 
+__What genes are in our region of interest?__
+- [Solyc09g075990.2](https://solgenomics.net/feature/17936457/details) - 5&apos-nucleotidase surE (AHRD V1 ***- D6YVT2_WADCW); contains Interpro domain(s) IPR002828 Survival protein SurE-like phosphatase/nucleotidase
+- [Solyc09g076000.2](https://solgenomics.net/feature/17936476/details) - Serine/threonine protein kinase (AHRD V1 *-** D0NNA3_PHYIN); contains Interpro domain(s) IPR002290 Serine/threonine protein kinase
+- [Solyc09g076010.2](https://solgenomics.net/feature/17936491/details) - PHD finger family protein (AHRD V1 *--- D7MI23_ARALY); contains Interpro domain(s) IPR019787 Zinc finger, PHD-finger
+- [Solyc09g076020.2](https://solgenomics.net/feature/17936508/details) - Imidazoleglycerol-phosphate dehydratase (AHRD V1 **** B9RTS0_RICCO); contains Interpro domain(s) IPR000807 Imidazole glycerol-phosphate dehydratase
+- [Solyc09g076040.2](https://solgenomics.net/feature/17936536/details) - Protein SUPPRESSOR OF GENE SILENCING 3 homolog (AHRD V1 *--- SGN-S3 contains Interpro domain(s) IPR005380 Region of unknown function XS
+- [Solyc09g076050.2](https://solgenomics.net/feature/17936543/details) - FRIGIDA (Fragment) (AHRD V1 *--- B0Z034_ARALP); contains Interpro domain(s) IPR012474 Frigida-like
+- [Solyc09g082050.2](https://solgenomics.net/feature/17936550/details) - Histone-lysine N-methyltransferase (AHRD V1 *-** B6K768_SCHJY); contains Interpro domain(s) IPR003105 SRA-YDG
+- [Solyc09g082060.2](https://solgenomics.net/feature/17936557/details) - Cysteine synthase (AHRD V1 **** Q3LAG5_TOBAC); contains Interpro domain(s) IPR005859 Cysteine synthase A
+- [Solyc09g082090.1](https://solgenomics.net/feature/17936581/details) - Unknown Protein (AHRD V1)
+
+
+```{unix}
+wget ftp://ftp.solgenomics.net/tomato_genome/annotation/ITAG2.4_release/ITAG2.4_proteins_full_desc.fasta
+grep "^>" ITAG2.4_proteins_full_desc.fasta
+cat ITAG2.4_fasta_header.txt | sed ':a;s/^\(\([^"]*"[^"]*"[^"]*\)*[^"]*"[^"]*\) /\1_/;ta' | sed 's/evidence_code:[A-Za-Z0-9]*\ //' | sed 's/go_terms:[G,O,:,0-9]*\ //' | sed 's/GO:[0-9][0-9][0-9][0-9][0-9]*\ //' | tr " " "," > itag2.4_fasta_header.csv
+```
+
+
 # Mapping for deletions
 
-reads were mapped using subread-1.5.0-p2
+reads were mapped using TopHat v2.0.8b
 
 Create fasta file for chr09
 
 	samtools faidx S_lycopersicum_chromosomes.2.50.fa SL2.50ch09 > S_lycopersicum_ch09.2.50.fa
 
-Create index for subread to use
+Create index for tophat to use
 
-	subread-buildindex -o S_lycopersicum_ch09.2.50.fa.index S_lycopersicum_ch09.2.50.fa
+	bowtie2 build S_lycopersicum_ch09.2.50.fa S_lycopersicum_ch09.2.50
 
-####Map tep, M82 and heinz to ch09.2.50.
+#### Map tep, M82 and heinz to ch09.2.50.fa
 
 __Tep-1:__
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day1_R1.trim.paired.fq.gz -R Day1_R2.trim.paired.fq.gz -o Day1_SR.bam
+use tophat to generate bam and junctions.bed
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day2_R1.trim.paired.fq.gz -R Day2_R2.trim.paired.fq.gz -o Day2_SR.bam
+	tophat -o TH_SL_2.50_ch09 -p 2 S_lycopersicum_ch09.2.50 Day1_R1.trim.paired.fq.gz,Day2_R1.trim.paired.fq.gz,Day3_R1.trim.paired.fq.gz,Day4_R1.trim.paired.fq.gz Day1_R2.trim.paired.fq.gz,Day2_R2.trim.paired.fq.gz,Day3_R2.trim.paired.fq.gz,Day4_R2.trim.paired.fq.gz
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day3_R1.trim.paired.fq.gz -R Day3_R2.trim.paired.fq.gz -o Day3_SR.bam
+#### Use snpEff to predict possible outcomes of mutations
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day4_R1.trim.paired.fq.gz -R Day4_R2.trim.paired.fq.gz -o Day4_SR.bam
+heinz_tep_M.vcf file was subset to include the original header and chromosome 9 using
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day1_all.trim.unpaired.fq.gz  -o Day1_SR_unpaired.bam
+	grep '^#' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
+	grep '^SL2.50ch09' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
+This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day2_all.trim.unpaired.fq.gz  -o Day2_SR_unpaired.bam
+	java -Xmx4g -jar ~/snpEff/snpEff.jar -v SL2.50 heinz_tep_M_ch09.vcf
+	java -Xmx4g -jar ~/snpEff/snpEff.jar -v SL2.50 heinz_tep_M_ch09.vcf > heinz_tep_M_ch09_ann.vcf
 
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day3_all.trim.unpaired.fq.gz  -o Day3_SR_unpaired.bam
-
-	subread-align -t 1 -T 3 -i S_lycopersicum_ch09.2.50.fa.index -I 200 -r Day4_all.trim.unpaired.fq.gz  -o Day4_SR_unpaired.bam
+This was analyzed in R studio with the following commands.
+The script can be found in `~/Documents/Maloof_lab/Tep-1/Scripts/Ellis_Scripts/des_tep_snpeff.rmd`

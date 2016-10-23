@@ -1,0 +1,71 @@
+---
+title: "des_tep_snpeff.rmd"
+author: "Ellis Anderson"
+date: "August 29, 2016"
+output: html_document
+---
+
+```{r}
+#Set up
+library(plyr)
+library(ggplot2)
+library(caTools)
+
+setwd("~/Documents/Maloof_Lab/Tep-1/Data/Vcf_files/")
+
+snpEff_data<-read.table("heinz_tep_M_ch09_ann.vcf", header = FALSE, stringsAsFactors=FALSE)
+summary(snpEff_data)
+head(snpEff_data)
+colnames(snpEff_data) <- c("CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT","tep_calls","M82_calls","heinz_calls")
+
+#get rid of alleles with more than one alternate allele
+snpEff_data <- snpEff_data[!grepl(",",snpEff_data$ALT),]
+
+#fix empty data entry
+snpEff_data$tep_calls[snpEff_data$tep_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
+snpEff_data$M82_calls[snpEff_data$M82_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
+snpEff_data$heinz_calls[snpEff_data$heinz_calls=="."] <- "NA:NA:NA,NA:NA:NA:NA:NA:NA,NA,NA"
+
+
+tep_tmp <- ldply(strsplit(snpEff_data$tep_calls, split = ":"))
+colnames(tep_tmp) <- c("tep.gt","tep.read.depth","tep.allele.count","tep.ref.count","tep.ref.qual","tep.alt.count","tep.alt.qual","tep.gt.lik")
+head(tep_tmp)
+
+M82_tmp <- ldply(strsplit(snpEff_data$M82_calls, split = ":"))
+colnames(M82_tmp) <- c("M82.gt","M82.read.depth","M82.allele.count","M82.ref.depth","M82.ref.qual","M82.alt.depth","M82.alt.qual","M82.lik")
+head(M82_tmp)
+
+Heinz_tmp <- ldply(strsplit(snpEff_data$heinz_calls, split = ":"))
+colnames(Heinz_tmp) <- c("Heinz.gt","Heinz.read.depth","Heinz.allele.count","Heinz.ref.depth","Heinz.ref.qual","Heinz.alt.depth","Heinz.alt.qual","Heinz.lik")
+head(Heinz_tmp)
+
+#convert values to numeric
+
+tep_tmp[,c(-1,-8)] <- apply(tep_tmp[,c(-1,-8)],2,as.numeric)
+M82_tmp[,c(-1,-8)] <- apply(M82_tmp[,c(-1,-8)],2,as.numeric)
+Heinz_tmp[,c(-1,-8)] <- apply(Heinz_tmp[,c(-1,-8)],2,as.numeric)
+
+summary(tep_tmp)
+summary(M82_tmp)
+summary(Heinz_tmp)
+
+snpEff_data<- cbind(snpEff_data, tep_tmp, M82_tmp, Heinz_tmp)
+
+names(snpEff_data)
+
+#Next steps
+#Filter to keep rows where M82 and tep != "0/0"
+#Filter to keep rows where heinz ="0/0"
+
+tep_snp_data <- subset(snpEff_data, tep.gt != "0/0")
+tep_snp_data <- subset(tep_snp_data, M82.gt != "0/0")
+# Should I be subsetting this data the same way we did the bulk-segregant analysis - i.e. should 
+# only 0/0 heinz sites be allowed? what about 1/0?
+tep_snp_data <- subset(tep_snp_data, Heinz.gt != "1/1")
+
+# calculate percent M82 and filter based on % M82
+tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.count / tep_snp_data$tep.read.depth)*100
+tep_snp_data <- subset(tep_snp_data, tep.percent > 90)
+tep_snp_data <- tep_snp_data[as.character(tep_snp_data$M82.gt) != as.character(tep_snp_data$tep.gt),]
+
+
