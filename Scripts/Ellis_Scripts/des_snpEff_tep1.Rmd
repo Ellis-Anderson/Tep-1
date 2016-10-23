@@ -57,15 +57,15 @@ names(snpEff_data)
 #Filter to keep rows where M82 and tep != "0/0"
 #Filter to keep rows where heinz ="0/0"
 
-tep_snp_data <- subset(snpEff_data, tep.gt != "0/0")
-tep_snp_data <- subset(tep_snp_data, M82.gt != "0/0")
+tep_snpEff_data <- subset(snpEff_data, tep.gt != "0/0")
+tep_snpEff_data <- subset(tep_snpEff_data, M82.gt != "0/0")
 # Should I be subsetting this data the same way we did the bulk-segregant analysis - i.e. should 
 # only 0/0 heinz sites be allowed? what about 1/0?
-tep_snp_data <- subset(tep_snp_data, Heinz.gt != "1/1")
+tep_snpEff_data <- subset(tep_snpEff_data, Heinz.gt != "1/1")
 
 # calculate percent M82 and filter based on % M82
 tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.count / tep_snp_data$tep.read.depth)*100
 tep_snp_data <- subset(tep_snp_data, tep.percent > 90)
 tep_snp_data <- tep_snp_data[as.character(tep_snp_data$M82.gt) != as.character(tep_snp_data$tep.gt),]
 
-
+```
