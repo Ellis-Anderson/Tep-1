@@ -54,18 +54,19 @@ snpEff_data<- cbind(snpEff_data, tep_tmp, M82_tmp, Heinz_tmp)
 names(snpEff_data)
 
 #Next steps
-#Filter to keep rows where M82 and tep != "0/0"
+#Filter to remove rows with NAs
 #Filter to keep rows where heinz ="0/0"
-
-tep_snpEff_data <- subset(snpEff_data, tep.gt != "0/0")
-tep_snpEff_data <- subset(tep_snpEff_data, M82.gt != "0/0")
-# Should I be subsetting this data the same way we did the bulk-segregant analysis - i.e. should 
-# only 0/0 heinz sites be allowed? what about 1/0?
-tep_snpEff_data <- subset(tep_snpEff_data, Heinz.gt != "1/1")
+#Filter to only keep rows where M82 and tep do not have the same gt
+#Filter to only keep homozygous alt tep alleles
+tep_snpEff_data <- snpEff_data[snpEff_data$tep.gt != "NA" & snpEff_data$M82.gt != "NA",]
+tep_snpEff_data <- tep_snpEff_data[tep_snpEff_data$Heinz.gt == "0/0",]
+tep_snpEff_data <- tep_snpEff_data[tep_snpEff_data$M82.gt != tep_snpEff_data$tep.gt,]
+tep_snpEff_data <- subset(tep_snpEff_data, tep.gt == "1/1")
 
 # calculate percent M82 and filter based on % M82
-tep_snp_data$tep.percent <- (tep_snp_data$tep.alt.count / tep_snp_data$tep.read.depth)*100
-tep_snp_data <- subset(tep_snp_data, tep.percent > 90)
-tep_snp_data <- tep_snp_data[as.character(tep_snp_data$M82.gt) != as.character(tep_snp_data$tep.gt),]
+tep_snpEff_data$tep.percent <- (tep_snpEff_data$tep.alt.count / tep_snpEff_data$tep.read.depth)*100
+tep_snpEff_data <- subset(tep_snpEff_data, tep.percent > 90)
 
+# restrict SNPs to only those in area of interest
+snpEff_small2 <- tep_snpEff_data[tep_snpEff_data$POS > 67600000 & tep_snpEff_data$POS < 68000000,]
 ```
