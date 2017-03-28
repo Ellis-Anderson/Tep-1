@@ -86,6 +86,7 @@ heinz_tep_M.vcf file was subset to include the original header and chromosome 9 
 
 	grep '^#' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
 	grep '^SL2.50ch09' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
+	
 This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 
 	java -Xmx4g -jar ~/snpEff/snpEff.jar -v SL2.50 heinz_tep_M_ch09.vcf
@@ -93,4 +94,4 @@ This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 
 This was analyzed in R studio with the following commands.
 The script can be found in `~/Documents/Maloof_lab/Tep-1/Scripts/Ellis_Scripts/des_tep_snpeff.rmd`
-Nothing of particular interest was found. 
+Nothing of particular interest was found.
