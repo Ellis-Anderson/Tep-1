@@ -73,23 +73,12 @@ cat ITAG2.4_fasta_header.txt | sed ':a;s/^\(\([^"]*"[^"]*"[^"]*\)*[^"]*"[^"]*\) 
 
 # Mapping for deletions
 
-reads were mapped using TopHat v2.0.8b
+Leslie's raw trimmed and barcode-split files from her Day_1 Day_2 Day_3 and Day_4 subdirectories were aligned to SL2.50
+using STAR.
 
-Create fasta file for chr09
+The gff3 file containing gene annotations for sl2.50 was downloaded from solgenomics.net using
 
-	samtools faidx S_lycopersicum_chromosomes.2.50.fa SL2.50ch09 > S_lycopersicum_ch09.2.50.fa
-
-Create index for tophat to use
-
-	bowtie2 build S_lycopersicum_ch09.2.50.fa S_lycopersicum_ch09.2.50
-
-#### Map tep, M82 and heinz to ch09.2.50.fa
-
-__Tep-1:__
-
-use tophat to generate bam and junctions.bed
-
-	tophat -o TH_SL_2.50_ch09 -p 2 S_lycopersicum_ch09.2.50 Day1_R1.trim.paired.fq.gz,Day2_R1.trim.paired.fq.gz,Day3_R1.trim.paired.fq.gz,Day4_R1.trim.paired.fq.gz Day1_R2.trim.paired.fq.gz,Day2_R2.trim.paired.fq.gz,Day3_R2.trim.paired.fq.gz,Day4_R2.trim.paired.fq.gz
+	wget ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/annotation/ITAG2.4_release/ITAG2.4_gene_models.gff3
 
 #### Use snpEff to predict possible outcomes of mutations
 
@@ -104,3 +93,4 @@ This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 
 This was analyzed in R studio with the following commands.
 The script can be found in `~/Documents/Maloof_lab/Tep-1/Scripts/Ellis_Scripts/des_tep_snpeff.rmd`
+Nothing of particular interest was found. 
