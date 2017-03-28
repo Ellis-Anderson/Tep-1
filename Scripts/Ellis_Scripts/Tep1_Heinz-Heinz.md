@@ -76,6 +76,25 @@ cat ITAG2.4_fasta_header.txt | sed ':a;s/^\(\([^"]*"[^"]*"[^"]*\)*[^"]*"[^"]*\) 
 Leslie's raw trimmed and barcode-split files from her Day_1 Day_2 Day_3 and Day_4 subdirectories were aligned to SL2.50
 using STAR.
 
+The Genome Index Files were generated with the following commands
+
+	STAR --runThreadN 8 --runMode genomeGenerate --genomeDir ./ --genomeFastaFiles ./S_lycopersicum_chromosomes.2.50.fa --sjdbGTFfile ../Annotations/ITAG2.4_gene_models.gff3 --sjdbGTFtagExonParentTranscript Parent --sjdbOverhang 100
+
+Reads were mapped in two subsequent rounds; one for paired end reads and one for unpaired reads.
+
+	STAR --runThreadN 8 --genomeDir ../Genome/ --readFilesIn ../Reads/Day1_R1.trim.paired.fq.gz,../Reads/Day2_R1.trim.paired.fq.gz,../Reads/Day3_R1.trim.paired.fq.gz,../Reads/Day4_R1.trim.paired.fq.gz ../Reads/Day1_R2.trim.paired.fq.gz,../Reads/Day2_R2.trim.paired.fq.gz,../Reads/Day3_R2.trim.paired.fq.gz,../Reads/Day4_R2.trim.paired.fq.gz --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate
+
+	STAR --runThreadN 12 --genomeDir ../Genome/ --readFilesIn ../Reads/Day1_all.trim.unpaired.fq.gz,../Reads/Day2_all.trim.unpaired.fq.gz,../Reads/Day3_all.trim.unpaired.fq.gz,../Reads/Day4_all.trim.unpaired.fq.gz  --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate
+
+These were saved as all_days.pair.ann.sorted.bam and all_days.pair.ann.sorted.bam respectively.
+These two files were merged using samtools merged.
+
+	samtools merge all_days.ann.sorted.bam ./Star_GFF/all_days.pair.ann.sorted.bam ./Star_GFF_unpaired/all_days.unpair.ann.sorted.bam
+
+The combined BAM file was used to generate a BedGraph file to be analyzed in IGV.
+
+	STAR --runThreadN 10 --runMode inputAlignmentsFromBAM --inputBAMfile all_days.ann.sorted.bam --outWigType bedGraph --outWigStrand Unstranded
+
 The gff3 file containing gene annotations for sl2.50 was downloaded from solgenomics.net using
 
 	wget ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/annotation/ITAG2.4_release/ITAG2.4_gene_models.gff3
@@ -86,7 +105,7 @@ heinz_tep_M.vcf file was subset to include the original header and chromosome 9 
 
 	grep '^#' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
 	grep '^SL2.50ch09' heinz_tep_M.vcf >> heinz_tep_M_ch09.vcf
-	
+
 This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 
 	java -Xmx4g -jar ~/snpEff/snpEff.jar -v SL2.50 heinz_tep_M_ch09.vcf
