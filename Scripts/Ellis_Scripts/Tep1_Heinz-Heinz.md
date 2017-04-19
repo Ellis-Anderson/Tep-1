@@ -64,15 +64,16 @@ __What genes are in our region of interest?__
 - [Solyc09g082090.1](https://solgenomics.net/feature/17936581/details) - Unknown Protein (AHRD V1)
 
 
-```{unix}
+``` {unix}
 wget ftp://ftp.solgenomics.net/tomato_genome/annotation/ITAG2.4_release/ITAG2.4_proteins_full_desc.fasta
 grep "^>" ITAG2.4_proteins_full_desc.fasta
 cat ITAG2.4_fasta_header.txt | sed ':a;s/^\(\([^"]*"[^"]*"[^"]*\)*[^"]*"[^"]*\) /\1_/;ta' | sed 's/evidence_code:[A-Za-Z0-9]*\ //' | sed 's/go_terms:[G,O,:,0-9]*\ //' | sed 's/GO:[0-9][0-9][0-9][0-9][0-9]*\ //' | tr " " "," > itag2.4_fasta_header.csv
 ```
-
+```
 
 # Mapping for deletions
 
+#### Mapping with standard STAR protocol
 Leslie's raw trimmed and barcode-split files from her Day_1 Day_2 Day_3 and Day_4 subdirectories were aligned to SL2.50
 using STAR.
 
@@ -99,6 +100,28 @@ The gff3 file containing gene annotations for sl2.50 was downloaded from solgeno
 
 	wget ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/annotation/ITAG2.4_release/ITAG2.4_gene_models.gff3
 
+#### Analyzing in IGV
+
+I searched the genomic area determined to be 100% Tep-1 for deletions in exonic regions of genic DNA.
+I found two suggested deletions in exonic DNA.
+One in [Solyc09g076020.2](https://solgenomics.net/feature/17936508/details) - Imidazoleglycerol-phosphate dehydratase (AHRD V1 **** B9RTS0_RICCO); contains Interpro domain(s) IPR000807 Imidazole glycerol-phosphate dehydratase
+and another in [Solyc09g082090.1](https://solgenomics.net/feature/17936581/details) - Unknown Protein (AHRD V1)
+
+#### Mapping Using Alexander Dobin's Suggestions for genomic DNA
+
+The first mapping attempt split reads over huge distances, I want to try again without using annotations, instead using a 2 pass method.
+I also want to try mapping for genomic data using the suggestions Alexander Dobin, author of STAR, suggests.
+
+	STAR --runThreadN 10 --runMode genomeGenerate --genomeDir ./ --genomeFastaFiles ./S_lycopersicum_chromosomes.2.50.fa
+
+	STAR --runThreadN 12 --genomeDir ../Genome_No_Ann/ --readFilesIn ../Reads/Day1_R1.trim.paired.fq.gz,../Reads/Day2_R1.trim.paired.fq.gz,../Reads/Day3_R1.trim.paired.fq.gz,../Reads/Day4_R1.trim.paired.fq.gz ../Reads/Day1_R2.trim.paired.fq.gz,../Reads/Day2_R2.trim.paired.fq.gz,../Reads/Day3_R2.trim.paired.fq.gz,../Reads/Day4_R2.trim.paired.fq.gz --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --twopassMode Basic
+
+	STAR --runThreadN 12 --genomeDir ../Genome_No_Ann/ --readFilesIn ../Reads/Day1_all.trim.unpaired.fq.gz,../Reads/Day2_all.trim.unpaired.fq.gz,../Reads/Day3_all.trim.unpaired.fq.gz,../Reads/Day4_all.trim.unpaired.fq.gz  --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --twopassMode Basic
+
+	samtools merge all_days.sorted.bam ./Star_2pass_pair/all_days.pair.sorted.bam ./Star_2pass_unpair/all_days.unpair.sorted.bam
+
+
+
 #### Use snpEff to predict possible outcomes of mutations
 
 heinz_tep_M.vcf file was subset to include the original header and chromosome 9 using
@@ -114,3 +137,165 @@ This vcf file was analyzed using snpEff and snpEffs database for SL2.50
 This was analyzed in R studio with the following commands.
 The script can be found in `~/Documents/Maloof_lab/Tep-1/Scripts/Ellis_Scripts/des_tep_snpeff.rmd`
 Nothing of particular interest was found.
+
+
+
+## Re-barcoding and Trimming tep reads
+
+### Barcoding with Autobarcode
+
+### Barcoding with Python
+As auto-barcode disturbs the order of the reads in the fastq files it returns, further downstream analysis with BWA became challenging.
+Overall quality of SNPs was also unimportant in this stage as we were looking for deletions within the region of interest on chromosome 9 and not performing any variant calling.
+Therefore instead of using auto-barcode to seperate the reads by day, to later be recombined, I wrote a simple python script to remove the first 6 bases(the barcodes) of all the reads in the JMAS010 fastq files.
+This can be found in my Tep-1 github repo under `Tep-1/Data/Barcoding/trim-fq.py`.
+I called the program with the following commands:
+
+	python trim-fq.py JMAS010.1.fq
+	python trim-fq.py JMAS010.2.fq
+
+These calls produced the `bar.JMAS010.1.fq` and `bar.JMAS010.2.fq` files in the barcoding folder.
+According to some simple math and visual inspection this program seems to have done its job correctly.
+
+### Trimming
+After barcoding the reads still needed to be trimmed for quality.
+Visual inspection of the original fastq files showed some reads with zero usable information.
+The `bar.JMAS010.*.fq` files were trimmed using the following command:
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/bar.JMAS010.1.fq ../Barcoding/bar.JMAS010.2.fq bar.JMAS010.1.paired.fq bar.JMAS010.1.unpaired.fq bar.JMAS010.2.paired.fq  bar.JMAS010.2.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+__Output:__
+
+	Input Read Pairs: 206012240 Both Surviving: 118942857 (57.74%) Forward Only Surviving: 11943836 (5.80%) Reverse Only Surviving: 8409328 (4.08%) Dropped: 66716219 (32.38%)
+
+### Mapping with BWA (Again)
+After trimming the read pairs I used BWA mem to align them to the SL2.50 genome.
+With the extra coverage provided by the now included reads, we hoped to get a higher fidelity picture of deletions in our region of interest.
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/bar.JMAS010.1.paired.fq ../Trimming/bar.JMAS010.2.paired.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.PE.sort.rmdup.bam
+
+Upon inspection of the newly generated bam file, the potential deletion in [Solyc09g076020.2](https://solgenomics.net/feature/17936508/details) now had coverage, but the potential deletion in [Solyc09g082090.1](https://solgenomics.net/feature/17936581/details) continued to have zero coverage.
+
+
+
+
+
+
+
+
+
+
+
+
+# Failed Code
+
+### Auto-Barcode
+We found potential spots of interest so now we want to include more data(if possible) to confirm our speculative findings before proceeding.
+Using Mike Covingtons autobarcode to remove barcodes
+
+	auto_barcode/barcode_split_trim.pl --id tep1 -m 1 -l -b epi1_barcode.list -o R1.split JMAS010.1.fq
+	auto_barcode/barcode_split_trim.pl --id tep1 -m 1 -l -b epi1_barcode.list -o R2.split JMAS010.2.fq
+
+This produced several log files:
+	log_barcode_counts.fq_JMAS010.1.bar_epi1_barcode.list
+	log_barcodes_observed.fq_JMAS010.1.bar_epi1_barcode.list
+	log_barcode_counts.fq_JMAS010.2.bar_epi1_barcode.list
+	log_barcodes_observed.fq_JMAS010.2.bar_epi1_barcode.list
+These can be found in the R1.split and R2.split directories respectively
+
+### Trimmomatic
+Split Reads from Days 1-4 were trimmed using the following commands
+
+##### Day 1
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/R1.split/Day1.AAGAC.fq ../Barcoding/R2.split/Day1.AAGAC.fq R1.D1.trim.paired.fq R1.D1.trim.unpaired.fq R2.D1.trim.paired.fq  R2.D1.trim.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	__output:__ Input Read Pairs: 38244690 Both Surviving: 20710085 (54.15%) Forward Only Surviving: 8075309 (21.11%) Reverse Only Surviving: 6663326 (17.42%) Dropped: 2795970 (7.31%)
+
+unpaired reads were merged with the following
+
+	cat R1.D1.trim.unpaired.fq R2.D1.trim.unpaired.fq > all.D1.trim.unpaired.fq
+
+##### Day 2
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/R1.split/Day2.CATTA.fq ../Barcoding/R2.split/Day2.CATTA.fq Day2/R1.D2.trim.paired.fq Day2/R1.D2.trim.unpaired.fq Day2/R2.D2.trim.paired.fq  Day2/R2.D2.trim.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	__Output:__ Input Read Pairs: 41372544 Both Surviving: 22267370 (53.82%) Forward Only Surviving: 8618299 (20.83%) Reverse Only Surviving: 7486798 (18.10%) Dropped: 3000077 (7.25%)
+
+unpaired reads were merged with the following
+
+	cat R1.D2.trim.unpaired.fq R2.D2.trim.unpaired.fq > all.D2.trim.unpaired.fq
+
+##### Day 3
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/R1.split/Day3.GTAGG.fq ../Barcoding/R2.split/Day3.GTAGG.fq Day3/R1.D3.trim.paired.fq Day3/R1.D3.trim.unpaired.fq Day3/R2.D3.trim.paired.fq  Day3/R2.D3.trim.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	__Output:__ Input Read Pairs: 34362137 Both Surviving: 9341134 (27.18%) Forward Only Surviving: 6986574 (20.33%) Reverse Only Surviving: 10229269 (29.77%) Dropped: 7805160 (22.71%)
+
+unpaired reads were merged with the following
+
+	cat R1.D3.trim.unpaired.fq R2.D3.trim.unpaired.fq > all.D3.trim.unpaired.fq
+
+#### Day 4
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/R1.split/Day4.TGCCT.fq ../Barcoding/R2.split/Day4.TGCCT.fq Day4/R1.D4.trim.paired.fq Day4/R1.D4.trim.unpaired.fq Day4/R2.D4.trim.paired.fq  Day4/R2.D4.trim.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	__Output:__ Input Read Pairs: 41629059 Both Surviving: 15829602 (38.03%) Forward Only Surviving: 9815036 (23.58%) Reverse Only Surviving: 9839762 (23.64%) Dropped: 6144659 (14.76%)
+
+unpaired reads were merged with the following
+
+	cat R1.D4.trim.unpaired.fq R2.D4.trim.unpaired.fq > all.D4.trim.unpaired.fq
+
+## Mapping with BWA (Again)
+To simplify the number of bam files that require merging, fastq files were merged with the following commands.
+
+	cat Day1/R1.D1.trim.paired.fq Day2/R1.D2.trim.paired.fq Day3/R1.D3.trim.paired.fq Day4/R1.D4.trim.paired.fq > All_Days/R1.trim.paired.fq
+
+	cat Day1/R2.D1.trim.paired.fq Day2/R2.D2.trim.paired.fq Day3/R2.D3.trim.paired.fq Day4/R2.D4.trim.paired.fq > All_Days/R2.trim.paired.fq
+
+	cat Day1/all.D1.trim.unpaired.fq Day2/all.D2.trim.unpaired.fq Day3/all.D3.trim.unpaired.fq Day4/all.D4.trim.unpaired.fq > All_Days/all.trim.unpaired.fq
+
+These concatenated files were then mapped with the following commands.
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/All_Days/R1.trim.paired.fq ../Trimming/All_Days/R2.trim.paired.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.PE.sort.rmdup.bam
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/Day1/R1.D1.trim.paired.fq ../Trimming/Day1/R2.D1.trim.paired.fq | samtools view  -u - | samtools sort -m 2000000000 -o D1.PE.sort.bam
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/Day2/R1.D2.trim.paired.fq ../Trimming/Day2/R2.D2.trim.paired.fq | samtools view  -u - | samtools sort -m 2000000000 -o D2.PE.sort.bam
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/All_Days/all.trim.unpaired.fq| samtools view  -bu - | samtools sort -m 2000000000 -o tep1.unpaired -
+
+	`bwa mem -R '@RG\tID:Heinz\tSM:Heinz' S_lycopersicum_chromosomes.2.50.fa SRR404081.fastq.gz | samtools view -Sbu | samtools rmdup - HeinzG_tep1_rmdup_unsorted.bam`
+
+	`samtools sort -m 8000000000 HeinzG_tep1_rmdup_unsorted.bam HeinzG_tep1_rmdup.bam`
+
+	`cat R1.D1.trim.paired.fq | paste - - - - | sort -k1,1 -S 3G | tr '\t' '\n' > Sorted/R1.D1.PE.trim.sort.fq`
+
+# WTF
+
+##### Day 1
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/R1.split/Day1.fq ../Barcoding/R2.split/Day1.fq R1.Day1.trim.paired.fq R1.Day1.trim.unpaired.fq R2.Day1.trim.paired.fq  R2.Day1.trim.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	__output:__ Input Read Pairs: 38244690 Both Surviving: 20710085 (54.15%) Forward Only Surviving: 8075309 (21.11%) Reverse Only Surviving: 6663326 (17.42%) Dropped: 2795970 (7.31%)
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/R1.Day1.trim.paired.fq ../Trimming/R2.Day1.trim.paired.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.D1.PE.sort.rmdup.bam
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Barcoding/R1.split/Day1.fq ../Barcoding/R2.split/Day1.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.D1.PE.sort.rmdup.bam
+
+##### Day 1 - 3rd time?
+
+	auto_barcode/barcode_split_trim.pl --id tep1 -l -b epi1_barcode.list -o for.split JMAS010.1.fq
+	auto_barcode/barcode_split_trim.pl --id tep1 -l -b epi1_barcode.list -o rev.split JMAS010.2.fq
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Barcoding/for.split/Day1.fq ../Barcoding/rev.split/Day1.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.D1.PE.sort.rmdup.bam
+
+	~/bbmap/repair.sh in=../Barcoding/R1.split/Day1.fq in2=../Barcoding/R1.split/Day1.fq out=d1.r1.matched out2=d2.r2.matched
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Barcoding/bar.JMAS010.1.fq ../Barcoding/bar.JMAS010.2.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.PE.sort.rmdup.bam
+
+	trimmomatic PE -threads 10 -phred33 ../Barcoding/bar.JMAS010.1.fq ../Barcoding/bar.JMAS010.2.fq bar.JMAS010.1.paired.fq bar.JMAS010.1.unpaired.fq bar.JMAS010.2.paired.fq  bar.JMAS010.2.unpaired.fq ILLUMINACLIP:TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50
+
+	Input Read Pairs: 206012240 Both Surviving: 118942857 (57.74%) Forward Only Surviving: 11943836 (5.80%) Reverse Only Surviving: 8409328 (4.08%) Dropped: 66716219 (32.38%)
+
+	bwa mem -t 8 S_lycopersicum_chromosomes.2.50.fa  ../Trimming/bar.JMAS010.1.paired.fq ../Trimming/bar.JMAS010.2.paired.fq | samtools view  -u - | samtools sort -m 2000000000 - | samtools rmdup -  tep1.PE.sort.rmdup.bam

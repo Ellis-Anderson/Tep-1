@@ -1,0 +1,17 @@
+Barcode splitting summary for:
+  JMAS010.2.fq
+--------------
+matched   140,384,767 68.1%
+unmatched  65,627,473 31.9%
+--------------
+barcodes          4        
+min      31,855,364   15.5%
+max      41,739,566   20.3%
+mean     35,096,192   17.0%
+median   33,394,918.5 16.2%
+--------------
+id   barcode count      percent
+Day1 AAGAC   31,855,364 15.5%  
+Day2 CATTA   34,386,365 16.7%  
+Day3 GTAGG   32,403,472 15.7%  
+Day4 TGCCT   41,739,566 20.3%  
